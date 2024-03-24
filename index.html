@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>3D Model Viewer</title>
+  <style>
+    body {
+      margin: 0;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <input type="file" name="" id="fileInput">
+  <script type="module">
+    import * as THREE from 'https://cdn.skypack.dev/three@0.129.0/build/three.module.js';
+    import { OrbitControls } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/controls/OrbitControls.js';
+    import { GLTFLoader } from 'https://cdn.skypack.dev/three@0.129.0/examples/jsm/loaders/GLTFLoader.js';
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xffffff);
+    const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.y = 20
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; // Enable shadow mapping
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Optional: for softer shadows
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+
+    // Ambient light
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1); // soft white light
+    scene.add(ambientLight);
+
+    // Directional light
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+    directionalLight.position.set(10, 50, -10);
+    scene.add(directionalLight);
+    directionalLight.castShadow = true; // Allow this light to cast shadows
+
+    // Optional: Configure shadow properties for better quality
+    directionalLight.shadow.mapSize.width = 2048;  // Default is 512
+    directionalLight.shadow.mapSize.height = 2048; // Default is 512
+    directionalLight.shadow.camera.near = 0.5;    // Default is 0.5
+    directionalLight.shadow.camera.far = 500;     // Default is 500
+
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight1.position.set(10, -50, -100);
+    scene.add(directionalLight1);
+    fileInput.onchange = () => {
+      applyTintToImageFile(fileInput.files[0], "#eeeeff", (imageBitmap) => {
+        const loader = new GLTFLoader();
+        loader.load('model.glb', function (gltf) {
+          gltf.scene.children[8].material.map.image = imageBitmap
+          scene.add(gltf.scene);
+        }, undefined, function (error) {
+          console.error(error);
+        });
+      })
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function applyTintToImageFile(imageFile, tintColor, callback) {
+      // Create an img element
+      const img = new Image();
+
+      // When the image is loaded, apply the tint
+      img.onload = () => {
+        // Create a canvas element
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Get the canvas context
+        const ctx = canvas.getContext('2d');
+        ctx.filter = 'saturate(65%)';
+        // Draw the image onto the canvas
+        ctx.drawImage(img, 0, 0);
+
+        // Set the composite operation to 'multiply' for tint effect
+        ctx.globalCompositeOperation = 'multiply';
+
+        // Fill the canvas with the tint color
+        ctx.fillStyle = tintColor;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Reset the composite operation to 'destination-in' to retain alpha
+        ctx.globalCompositeOperation = 'destination-in';
+        
+        // Draw the image again to apply alpha
+        ctx.drawImage(img, 0, 0);
+
+        // Call the callback with the tinted canvas
+        callback(canvas);
+      };
+
+      // Set the image source to the file
+      img.src = URL.createObjectURL(imageFile);
+    }
+
+    animate();
+  </script>
+</body>
+
+</html>
